@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# portman - A simple CLI tool to check and manage TCP ports
+# This script helps developers identify processes using specific ports and optionally kill them.
+# Supports interactive mode and forced kill using the --force flag.
+
+PORT=$1           # First argument: the port number to check
+FORCE=$2          # Second argument: optional flag --force to kill without confirmation
+
+# Check if port is provided
+if [ -z "$PORT" ]; then
+  echo "❌ Usage: portman <port-number> [--force]"
+  exit 1
+fi
+
+# Notify user of the port being checked
+echo "🔍 Checking port $PORT..."
+
+# Use lsof to find the PID (process ID) using the specified TCP port
+PID=$(lsof -ti tcp:$PORT)
+
+# If no PID is returned, the port is not in use
+if [ -z "$PID" ]; then
+  echo "✅ Port $PORT is currently free."
+  exit 0
+fi
+
+# If PID exists, notify user and show process details
+echo "⚠️ Port $PORT is currently in use by PID: $PID"
+echo "ℹ️ Process details:"
+lsof -i tcp:$PORT
+
+# If --force flag is passed, kill the process without confirmation
+if [ "$FORCE" == "--force" ]; then
+  kill -9 $PID \
+    && echo "✅ Process $PID has been killed." \
+    || echo "❌ Failed to kill process $PID."
+  exit 0
+fi
+
+# Otherwise, prompt the user for confirmation
+read -p "❓ Do you want to kill this process? (y/n): " confirm
+if [ "$confirm" == "y" ]; then
+  kill -9 $PID \
+    && echo "✅ Process $PID has been killed." \
+    || echo "❌ Failed to kill process $PID."
+else
+  echo "🚫 Aborted. Port $PORT is still in use."
+fi
