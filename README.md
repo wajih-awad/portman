@@ -1,6 +1,6 @@
 # Portman
 
-A smart CLI tool to inspect and manage TCP ports. Helps developers identify processes using specific ports, with fallback detection methods and improved handling of TIME_WAIT states.
+A simple CLI tool to manage TCP ports. Helps developers identify processes using specific ports, with reliable detection methods and improved handling of TIME_WAIT states.
 
 ## Features
 
@@ -45,7 +45,7 @@ sudo ln -s "$(pwd)/portman" /usr/local/bin/portman
 After installation, you can use the command from anywhere:
 
 ```bash
-portman <port-number> [--force]
+portman <port-number>
 ```
 
 ### Examples
@@ -55,14 +55,14 @@ Check if port 8080 is in use:
 portman 8080
 ```
 
-Check and forcefully kill process using port 3000:
+Check port 3000 and optionally kill the process:
 ```bash
-portman 3000 --force
+portman 3000
 ```
 
 ## Requirements
 
-- `lsof` command (usually pre-installed on most Unix-like systems)
+- `lsof` and `ss` commands (usually pre-installed on most Unix-like systems)
 
 ## License
 

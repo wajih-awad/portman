@@ -1,12 +1,11 @@
 #!/bin/bash
 
-# portman - Smart CLI tool to inspect and manage TCP ports
+# portman - Simple CLI tool to manage TCP ports
 
 PORT=$1
-FORCE=$2
 
 if [ -z "$PORT" ]; then
-  echo "❌ Usage: portman <port-number> [--force]"
+  echo "❌ Usage: portman <port-number>"
   exit 1
 fi
 
@@ -15,31 +14,36 @@ echo "🔍 Checking port $PORT..."
 # Try lsof first
 PID=$(sudo lsof -ti tcp:$PORT 2>/dev/null)
 
-# Fallback to ss if lsof gives nothing
+# If lsof fails, try ss
 if [ -z "$PID" ]; then
   echo "⚠️  lsof didn't detect any process. Trying ss..."
-  PID=$(sudo ss -lptn "sport = :$PORT" 2>/dev/null | awk 'NR>1 {match($6, /pid=[0-9]+/); if (RSTART) print substr($6, RSTART+4, RLENGTH-4)}')
-fi
 
-# Still nothing? Probably TIME_WAIT or released
-if [ -z "$PID" ]; then
-  echo "🟡 Port $PORT appears free, but it may be in TIME_WAIT or recently released."
-  echo "⏳ Wait a few seconds and try again if the issue persists."
-  exit 0
+  SS_LINE=$(sudo ss -lptn "sport = :$PORT" 2>/dev/null | grep -v State | head -n 1)
+
+  if [ -z "$SS_LINE" ]; then
+    echo "✅ Port $PORT is completely free."
+    exit 0
+  fi
+
+  PID=$(echo "$SS_LINE" | grep -oP 'pid=\K[0-9]+')
+
+  if [ -z "$PID" ]; then
+    echo "🟠 Port $PORT is in use (possibly in TIME_WAIT/CLOSE_WAIT), but no active PID found."
+    echo "⏳ Wait a few seconds and try again."
+    exit 0
+  fi
 fi
 
 echo "⚠️ Port $PORT is in use by PID: $PID"
 echo "ℹ️ Process details:"
-sudo lsof -i tcp:$PORT
+sudo lsof -i tcp:$PORT 2>/dev/null
 
-if [ "$FORCE" == "--force" ]; then
-  kill -9 $PID && echo "✅ Process $PID has been killed." || echo "❌ Failed to kill process $PID."
-  exit 0
-fi
-
-read -p "❓ Do you want to kill this process? (y/n): " confirm
-if [ "$confirm" == "y" ]; then
-  kill -9 $PID && echo "✅ Process $PID has been killed." || echo "❌ Failed to kill process $PID."
-else
-  echo "🚫 Aborted. Port $PORT is still in use."
-fi
+read -p "❓ Do you want to kill this process? (y/yes to confirm): " confirm
+case "$confirm" in
+  y|Y|yes|YES)
+    kill -9 $PID && echo "✅ Process $PID has been killed." || echo "❌ Failed to kill process $PID."
+    ;;
+  *)
+    echo "🚫 Aborted. Port $PORT is still in use."
+    ;;
+esac
