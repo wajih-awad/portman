@@ -1,11 +1,12 @@
 # Portman
 
-A simple CLI tool to check and manage TCP ports. This script helps developers identify processes using specific ports and optionally kill them.
+A smart CLI tool to inspect and manage TCP ports. Helps developers identify processes using specific ports, with fallback detection methods and improved handling of TIME_WAIT states.
 
 ## Features
 
-- Check if a TCP port is in use
-- Display details about processes using a specific port
+- Check if a TCP port is in use (using both lsof and ss as fallbacks)
+- Detect ports in TIME_WAIT state
+- Display detailed information about processes using a specific port
 - Kill processes with or without confirmation
 
 ## Installation
@@ -14,7 +15,7 @@ A simple CLI tool to check and manage TCP ports. This script helps developers id
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/portman.git
+git clone https://github.com/wajih-awad/portman.git
 
 # Navigate to the directory
 cd portman
@@ -27,7 +28,7 @@ cd portman
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/portman.git
+git clone https://github.com/wajih-awad/portman.git
 
 # Navigate to the directory
 cd portman

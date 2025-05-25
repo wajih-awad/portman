@@ -1,49 +1,45 @@
 #!/bin/bash
 
-# portman - A simple CLI tool to check and manage TCP ports
-# This script helps developers identify processes using specific ports and optionally kill them.
-# Supports interactive mode and forced kill using the --force flag.
+# portman - Smart CLI tool to inspect and manage TCP ports
 
-PORT=$1           # First argument: the port number to check
-FORCE=$2          # Second argument: optional flag --force to kill without confirmation
+PORT=$1
+FORCE=$2
 
-# Check if port is provided
 if [ -z "$PORT" ]; then
   echo "❌ Usage: portman <port-number> [--force]"
   exit 1
 fi
 
-# Notify user of the port being checked
 echo "🔍 Checking port $PORT..."
 
-# Use lsof to find the PID (process ID) using the specified TCP port
-PID=$(lsof -ti tcp:$PORT)
+# Try lsof first
+PID=$(sudo lsof -ti tcp:$PORT 2>/dev/null)
 
-# If no PID is returned, the port is not in use
+# Fallback to ss if lsof gives nothing
 if [ -z "$PID" ]; then
-  echo "✅ Port $PORT is currently free."
+  echo "⚠️  lsof didn't detect any process. Trying ss..."
+  PID=$(sudo ss -lptn "sport = :$PORT" 2>/dev/null | awk 'NR>1 {match($6, /pid=[0-9]+/); if (RSTART) print substr($6, RSTART+4, RLENGTH-4)}')
+fi
+
+# Still nothing? Probably TIME_WAIT or released
+if [ -z "$PID" ]; then
+  echo "🟡 Port $PORT appears free, but it may be in TIME_WAIT or recently released."
+  echo "⏳ Wait a few seconds and try again if the issue persists."
   exit 0
 fi
 
-# If PID exists, notify user and show process details
-echo "⚠️ Port $PORT is currently in use by PID: $PID"
+echo "⚠️ Port $PORT is in use by PID: $PID"
 echo "ℹ️ Process details:"
-lsof -i tcp:$PORT
+sudo lsof -i tcp:$PORT
 
-# If --force flag is passed, kill the process without confirmation
 if [ "$FORCE" == "--force" ]; then
-  kill -9 $PID \
-    && echo "✅ Process $PID has been killed." \
-    || echo "❌ Failed to kill process $PID."
+  kill -9 $PID && echo "✅ Process $PID has been killed." || echo "❌ Failed to kill process $PID."
   exit 0
 fi
 
-# Otherwise, prompt the user for confirmation
 read -p "❓ Do you want to kill this process? (y/n): " confirm
 if [ "$confirm" == "y" ]; then
-  kill -9 $PID \
-    && echo "✅ Process $PID has been killed." \
-    || echo "❌ Failed to kill process $PID."
+  kill -9 $PID && echo "✅ Process $PID has been killed." || echo "❌ Failed to kill process $PID."
 else
   echo "🚫 Aborted. Port $PORT is still in use."
 fi
